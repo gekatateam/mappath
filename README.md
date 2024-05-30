@@ -1,6 +1,6 @@
 # mappath
 
-mappath is a simple package for searchig and modifying generic maps or slices using keypaths.
+mappath is a simple package for searching and modifying generic maps or slices using keypaths.
 
 This functionality was originally implemented in [Neptunus](https://github.com/gekatateam/neptunus) to navigate through event data.
 
