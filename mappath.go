@@ -2,20 +2,33 @@ package mappath
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 )
 
-var (
-	ErrInvalidPath  = errors.New("invalid path")
-	ErrNoSuchField  = errors.New("no such field on the provided path")
-)
+type InvalidPathError struct {
+	Path   string
+	Reason string
+}
+
+func (e *InvalidPathError) Error() string { return fmt.Sprintf("%v: %v", e.Path, e.Reason) }
+
+type NotFoundError struct {
+	Path   string
+	Reason string
+}
+
+func (e *NotFoundError) Error() string { return fmt.Sprintf("%v: %v", e.Path, e.Reason) }
 
 // Get a value by specified key from provided map[string]any or []any.
 func Get(p any, key string) (any, error) {
 	if len(key) == 0 {
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "key length cannot be zero",
+		}
 	}
 
 	if key == "." {
@@ -23,7 +36,10 @@ func Get(p any, key string) (any, error) {
 	}
 
 	if key[0] == '.' {
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "key cannot start from dot",
+		}
 	}
 
 	for {
@@ -31,7 +47,10 @@ func Get(p any, key string) (any, error) {
 		if dotIndex < 0 { // no nested keys
 			node, err := searchInNode(p, key)
 			if err != nil {
-				return nil, ErrNoSuchField
+				return nil, &NotFoundError{
+					Path:   key,
+					Reason: "no such key",
+				}
 			}
 
 			return node, nil
@@ -39,18 +58,24 @@ func Get(p any, key string) (any, error) {
 
 		next, err := searchInNode(p, key[:dotIndex])
 		if err != nil {
-			return nil, ErrNoSuchField
+			return nil, &NotFoundError{
+				Path:   key,
+				Reason: "no such key",
+			}
 		}
 
 		key = key[dotIndex+1:] // shift path: foo.bar.buzz -> bar.buzz
-		p = next // shift searchable object
+		p = next               // shift searchable object
 	}
 }
 
 // Put a passed value on a specified path in the provided map[string]any or []any and get the updated object.
 func Put(p any, key string, val any) (any, error) {
 	if len(key) == 0 {
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "key length cannot be zero",
+		}
 	}
 
 	if key == "." {
@@ -73,11 +98,17 @@ func Put(p any, key string, val any) (any, error) {
 			}
 		}
 
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "dot merge error: both root node and value must be map[string]any or []any",
+		}
 	}
 
 	if key[0] == '.' {
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "key cannot start from dot",
+		}
 	}
 
 	return putInKey(p, key, val)
@@ -86,7 +117,10 @@ func Put(p any, key string, val any) (any, error) {
 // Delete a value on a specified path in the provided map[string]any or []any and get the updated object.
 func Delete(p any, key string) (any, error) {
 	if len(key) == 0 {
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "key length cannot be zero",
+		}
 	}
 
 	if key == "." {
@@ -94,7 +128,10 @@ func Delete(p any, key string) (any, error) {
 	}
 
 	if key[0] == '.' {
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "key cannot start from dot",
+		}
 	}
 
 	return deleteFromKey(p, key)
@@ -138,7 +175,8 @@ func putInKey(p any, key string, val any) (any, error) {
 
 	nextKey := key[dotIndex+1:]
 	nextNode, err := searchInNode(currNode, currKey)
-	if err == ErrInvalidPath {
+	var invalidPathError *InvalidPathError
+	if errors.As(err, &invalidPathError) {
 		return nil, err
 	}
 
@@ -182,26 +220,39 @@ func searchInNode(p any, key string) (any, error) {
 		if val, ok := t[key]; ok {
 			return val, nil
 		} else {
-			return nil, ErrNoSuchField
+			return nil, &NotFoundError{
+				Path:   key,
+				Reason: "no such key in map[string]any",
+			}
 		}
 	case []any:
 		i, err := strconv.Atoi(key)
 		if err != nil || i < 0 {
-			return nil, ErrNoSuchField
+			return nil, &NotFoundError{
+				Path:   key,
+				Reason: "target node is []any, but provided key is negative or cannot be converted into int",
+			}
 		}
 
 		if i < len(t) {
 			return t[i], nil
 		}
 
-		return nil, ErrNoSuchField
+		return nil, &NotFoundError{
+			Path:   key,
+			Reason: "no such key in []any",
+		}
 	default:
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "node must be a map[string]any or []any",
+		}
 	}
 }
 
-func createNode(key string) (any) {
+func createNode(key string) any {
 	if i, err := strconv.Atoi(key); err == nil && i >= 0 {
+		//lint:ignore S1019 explicitly indicates len and cap setting
 		s := make([]any, i+1, i+1)
 		return s
 	}
@@ -218,7 +269,10 @@ func putInNode(p any, key string, val any) (any, error) {
 	case []any:
 		i, err := strconv.Atoi(key)
 		if err != nil || i < 0 {
-			return nil, ErrInvalidPath
+			return nil, &InvalidPathError{
+				Path:   key,
+				Reason: "node is a []any, but provided key is negative or cannot be converted into int",
+			}
 		}
 
 		if i < len(t) {
@@ -233,7 +287,10 @@ func putInNode(p any, key string, val any) (any, error) {
 		n[i] = val
 		return n, nil
 	default:
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "node must be a map[string]any or []any",
+		}
 	}
 }
 
@@ -244,19 +301,31 @@ func deleteFromNode(p any, key string) (any, error) {
 			delete(t, key)
 			return t, nil
 		}
-		return nil, ErrNoSuchField
+		return nil, &NotFoundError{
+			Path:   key,
+			Reason: "no such key in map[string]any",
+		}
 	case []any:
 		i, err := strconv.Atoi(key)
 		if err != nil || i < 0 {
-			return nil, ErrInvalidPath
+			return nil, &InvalidPathError{
+				Path:   key,
+				Reason: "node is a []any, but provided key is negative or cannot be converted into int",
+			}
 		}
 
 		if i < len(t) {
 			return append(t[:i], t[i+1:]...), nil
 		}
 
-		return nil, ErrNoSuchField
+		return nil, &NotFoundError{
+			Path:   key,
+			Reason: "no such key in []any",
+		}
 	default:
-		return nil, ErrInvalidPath
+		return nil, &InvalidPathError{
+			Path:   key,
+			Reason: "node must be a map[string]any or []any",
+		}
 	}
 }

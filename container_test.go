@@ -8,7 +8,7 @@ import (
 	"github.com/gekatateam/mappath"
 )
 
-func TestGet(t *testing.T) {
+func TestContainerGet(t *testing.T) {
 	tests := map[string]struct {
 		p      any
 		key    string
@@ -149,7 +149,8 @@ func TestGet(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			val, err := mappath.Get(test.p, test.key)
+			c := &mappath.Container{mappath.Clone(test.p)}
+			val, err := c.Get(test.key)
 
 			if err != nil {
 				if !errors.As(err, &test.err) {
@@ -164,11 +165,15 @@ func TestGet(t *testing.T) {
 			if !reflect.DeepEqual(val, test.result) {
 				t.Errorf("unexpected result - want: %v, got: %v", test.result, val)
 			}
+
+			if !reflect.DeepEqual(c.Data, test.p) {
+				t.Errorf("container data was modified by get operation - want: %v, got: %v", test.result, val)
+			}
 		})
 	}
 }
 
-func TestPut(t *testing.T) {
+func TestContainerPut(t *testing.T) {
 	tests := map[string]struct {
 		p      any
 		key    string
@@ -282,10 +287,16 @@ func TestPut(t *testing.T) {
 					"bizz",
 				},
 			},
-			key:    "fizz.buzz",
-			val:    1337,
-			result: nil,
-			err:    new(*mappath.InvalidPathError),
+			key: "fizz.buzz",
+			val: 1337,
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+				},
+			},
+			err: new(*mappath.InvalidPathError),
 		},
 		"add new key, through map, bad path": {
 			p: map[string]any{
@@ -295,10 +306,16 @@ func TestPut(t *testing.T) {
 					"bizz",
 				},
 			},
-			key:    "foo.0",
-			val:    1337,
-			result: nil,
-			err:    new(*mappath.InvalidPathError),
+			key: "foo.0",
+			val: 1337,
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+				},
+			},
+			err: new(*mappath.InvalidPathError),
 		},
 		"add new key, no input, ok path": {
 			p:   nil,
@@ -331,16 +348,28 @@ func TestPut(t *testing.T) {
 					},
 				},
 			},
-			key:    "0.fizz.-3.buzz",
-			val:    1337,
-			result: nil,
-			err:    new(*mappath.InvalidPathError),
+			key: "0.fizz.-3.buzz",
+			val: 1337,
+			result: []any{
+				map[string]any{
+					"fizz": []any{
+						nil,
+						nil,
+						nil,
+						map[string]any{
+							"buzz": 1337,
+						},
+					},
+				},
+			},
+			err: new(*mappath.InvalidPathError),
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			val, err := mappath.Put(test.p, test.key, test.val)
+			c := &mappath.Container{mappath.Clone(test.p)}
+			err := c.Put(test.key, test.val)
 
 			if err != nil {
 				if !errors.As(err, &test.err) {
@@ -352,14 +381,14 @@ func TestPut(t *testing.T) {
 				}
 			}
 
-			if !reflect.DeepEqual(val, test.result) {
-				t.Errorf("unexpected result - want: %v, got: %v", test.result, val)
+			if !reflect.DeepEqual(c.Data, test.result) {
+				t.Errorf("unexpected result - want: %v, got: %v", test.result, c.Data)
 			}
 		})
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestContainerDelete(t *testing.T) {
 	tests := map[string]struct {
 		p      any
 		key    string
@@ -440,7 +469,7 @@ func TestDelete(t *testing.T) {
 			},
 			err: nil,
 		},
-		"delete key, no such key, bad result": {
+		"delete key, no such index, bad result": {
 			p: map[string]any{
 				"foo": "bar",
 				"fizz": []any{
@@ -452,9 +481,19 @@ func TestDelete(t *testing.T) {
 					},
 				},
 			},
-			key:    "fizz.5.bazz",
-			result: nil,
-			err:    new(*mappath.NotFoundError),
+			key: "fizz.5.bazz",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			err: new(*mappath.NotFoundError),
 		},
 		"delete key, invalid index, bad result": {
 			p: map[string]any{
@@ -468,15 +507,52 @@ func TestDelete(t *testing.T) {
 					},
 				},
 			},
-			key:    "fizz.-5.bazz",
-			result: nil,
-			err:    new(*mappath.NotFoundError),
+			key: "fizz.-5.bazz",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			err: new(*mappath.NotFoundError),
+		},
+		"delete key, no such key, bad result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			key: "fizz.3.bazz.brizz",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			err: new(*mappath.NotFoundError),
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			val, err := mappath.Delete(test.p, test.key)
+			c := &mappath.Container{mappath.Clone(test.p)}
+			err := c.Delete(test.key)
 
 			if err != nil {
 				if !errors.As(err, &test.err) {
@@ -488,8 +564,8 @@ func TestDelete(t *testing.T) {
 				}
 			}
 
-			if !reflect.DeepEqual(val, test.result) {
-				t.Errorf("unexpected result - want: %v, got: %v", test.result, val)
+			if !reflect.DeepEqual(c.Data, test.result) {
+				t.Errorf("unexpected result - want: %v, got: %v", test.result, c.Data)
 			}
 		})
 	}
