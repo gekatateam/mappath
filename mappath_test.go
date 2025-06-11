@@ -48,6 +48,17 @@ func TestGet(t *testing.T) {
 			result: "bazz",
 			err:    nil,
 		},
+		"from map, last slice, zero index, ok value": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz", "bazz",
+				},
+			},
+			key:    "fizz.0",
+			result: "buzz",
+			err:    nil,
+		},
 		"from map, through slice, ok value": {
 			p: map[string]any{
 				"foo": "bar",
@@ -125,7 +136,7 @@ func TestGet(t *testing.T) {
 			result: nil,
 			err:    new(*mappath.NotFoundError),
 		},
-		"from slice, incorrect index, bad value": {
+		"from slice, negative index, ok result": {
 			p: []any{
 				map[string]any{
 					"foo": "bar",
@@ -142,6 +153,26 @@ func TestGet(t *testing.T) {
 				"lorem",
 			},
 			key:    "0.fizz.-1.bazz",
+			result: 44,
+			err:    nil,
+		},
+		"from slice, incorrect index, bad value": {
+			p: []any{
+				map[string]any{
+					"foo": "bar",
+					"fizz": []any{
+						map[string]any{
+							"buzz": 33,
+						},
+						map[string]any{
+							"buzz": 33,
+							"bazz": 44,
+						},
+					},
+				},
+				"lorem",
+			},
+			key:    "0.fizz.-100.bazz",
 			result: nil,
 			err:    new(*mappath.NotFoundError),
 		},
@@ -176,7 +207,7 @@ func TestPut(t *testing.T) {
 		result any
 		err    any
 	}{
-		"add new key, in slice, ok result": {
+		"add new key, in slice with grow, ok result": {
 			p: map[string]any{
 				"foo": "bar",
 				"fizz": []any{
@@ -197,7 +228,7 @@ func TestPut(t *testing.T) {
 			},
 			err: nil,
 		},
-		"add new key, through slice, ok result": {
+		"add new key, through slice with grow, ok result": {
 			p: map[string]any{
 				"foo": "bar",
 				"fizz": []any{
@@ -245,6 +276,60 @@ func TestPut(t *testing.T) {
 					map[string]any{
 						"leet": "xxxx",
 					},
+				},
+			},
+			err: nil,
+		},
+		"update current key, through slice, zero index, ok result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					map[string]any{
+						"leet": 1337,
+					},
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			key: "fizz.0.leet",
+			val: "xxxx",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					map[string]any{
+						"leet": "xxxx",
+					},
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			err: nil,
+		},
+		"update current key, in slice, negative index, ok result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					"leet",
+				},
+			},
+			key: "fizz.-3",
+			val: "xxxx",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"xxxx",
+					nil,
+					"leet",
 				},
 			},
 			err: nil,
@@ -331,7 +416,7 @@ func TestPut(t *testing.T) {
 					},
 				},
 			},
-			key:    "0.fizz.-3.buzz",
+			key:    "0.fizz.-300.buzz",
 			val:    1337,
 			result: nil,
 			err:    new(*mappath.InvalidPathError),
@@ -386,6 +471,31 @@ func TestDelete(t *testing.T) {
 					"bizz",
 					nil,
 					map[string]any{},
+				},
+			},
+			err: nil,
+		},
+		"delete simple key on zero index, through slice, ok result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			key: "fizz.0",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
 				},
 			},
 			err: nil,
@@ -456,7 +566,7 @@ func TestDelete(t *testing.T) {
 			result: nil,
 			err:    new(*mappath.NotFoundError),
 		},
-		"delete key, invalid index, bad result": {
+		"delete key, negative out-of-range key, bad result": {
 			p: map[string]any{
 				"foo": "bar",
 				"fizz": []any{
@@ -469,6 +579,22 @@ func TestDelete(t *testing.T) {
 				},
 			},
 			key:    "fizz.-5.bazz",
+			result: nil,
+			err:    new(*mappath.InvalidPathError),
+		},
+		"delete key, invalid index, bad result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			key:    "fizz.100.bazz",
 			result: nil,
 			err:    new(*mappath.NotFoundError),
 		},

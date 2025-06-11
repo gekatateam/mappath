@@ -141,7 +141,7 @@ func TestContainerGet(t *testing.T) {
 				},
 				"lorem",
 			},
-			key:    "0.fizz.-1.bazz",
+			key:    "0.fizz.-100.bazz",
 			result: nil,
 			err:    new(*mappath.NotFoundError),
 		},
@@ -348,7 +348,7 @@ func TestContainerPut(t *testing.T) {
 					},
 				},
 			},
-			key: "0.fizz.-3.buzz",
+			key: "0.fizz.-300.buzz",
 			val: 1337,
 			result: []any{
 				map[string]any{
