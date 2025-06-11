@@ -207,7 +207,7 @@ func TestPut(t *testing.T) {
 		result any
 		err    any
 	}{
-		"add new key, in slice, ok result": {
+		"add new key, in slice with grow, ok result": {
 			p: map[string]any{
 				"foo": "bar",
 				"fizz": []any{
@@ -228,7 +228,7 @@ func TestPut(t *testing.T) {
 			},
 			err: nil,
 		},
-		"add new key, through slice, ok result": {
+		"add new key, through slice with grow, ok result": {
 			p: map[string]any{
 				"foo": "bar",
 				"fizz": []any{
