@@ -49,7 +49,7 @@ func Get(p any, key string) (any, error) {
 			if err != nil {
 				return nil, &NotFoundError{
 					Path:   key,
-					Reason: "no such key",
+					Reason: fmt.Sprintf("no such key: %v", err),
 				}
 			}
 
@@ -60,7 +60,7 @@ func Get(p any, key string) (any, error) {
 		if err != nil {
 			return nil, &NotFoundError{
 				Path:   key,
-				Reason: "no such key",
+				Reason: fmt.Sprintf("no such key: %v", err),
 			}
 		}
 
@@ -227,20 +227,24 @@ func searchInNode(p any, key string) (any, error) {
 		}
 	case []any:
 		i, err := strconv.Atoi(key)
-		if err != nil || i < 0 {
+		if err != nil {
 			return nil, &NotFoundError{
 				Path:   key,
 				Reason: "target node is []any, but provided key is negative or cannot be converted into int",
 			}
 		}
 
-		if i < len(t) {
+		if (i >= 0) && (i < len(t)) {
 			return t[i], nil
+		}
+
+		if (i < 0) && (len(t)+i > 0) && (len(t)+i < len(t)) {
+			return t[len(t)+i], nil
 		}
 
 		return nil, &NotFoundError{
 			Path:   key,
-			Reason: "no such key in []any",
+			Reason: "no such key in []any; if key is negative, it is out of range",
 		}
 	default:
 		return nil, &InvalidPathError{
@@ -268,16 +272,28 @@ func putInNode(p any, key string, val any) (any, error) {
 		return t, nil
 	case []any:
 		i, err := strconv.Atoi(key)
-		if err != nil || i < 0 {
+		if err != nil {
 			return nil, &InvalidPathError{
 				Path:   key,
-				Reason: "node is a []any, but provided key is negative or cannot be converted into int",
+				Reason: "node is a []any, but provided key cannot be converted into int",
 			}
 		}
 
-		if i < len(t) {
+		if (i >= 0) && (i < len(t)) {
 			t[i] = val
 			return t, nil
+		}
+
+		if i < 0 {
+			if (len(t)+i > 0) && (len(t)+i < len(t)) {
+				t[len(t)+i] = val
+				return t, nil
+			} else {
+				return nil, &InvalidPathError{
+					Path:   key,
+					Reason: "node is a []any, but provided negative index is out of range",
+				}
+			}
 		}
 
 		n := slices.Grow(t, i+1-len(t))
@@ -307,20 +323,25 @@ func deleteFromNode(p any, key string) (any, error) {
 		}
 	case []any:
 		i, err := strconv.Atoi(key)
-		if err != nil || i < 0 {
+		if err != nil {
 			return nil, &InvalidPathError{
 				Path:   key,
-				Reason: "node is a []any, but provided key is negative or cannot be converted into int",
+				Reason: "node is a []any, but provided key cannot be converted into int",
 			}
 		}
 
-		if i < len(t) {
-			return append(t[:i], t[i+1:]...), nil
+		if (i >= 0) && (i < len(t)) {
+			return slices.Delete(t, i, i+1), nil
+		}
+
+		if (i < 0) && (len(t)+i > 0) && (len(t)+i < len(t)) {
+			i = len(t) + i
+			return slices.Delete(t, i, i+1), nil
 		}
 
 		return nil, &NotFoundError{
 			Path:   key,
-			Reason: "no such key in []any",
+			Reason: "no such key in []any; if key is negative, it is out of range",
 		}
 	default:
 		return nil, &InvalidPathError{
