@@ -156,6 +156,26 @@ func TestGet(t *testing.T) {
 			result: 44,
 			err:    nil,
 		},
+		"from slice, negative index to zero, ok result": {
+			p: []any{
+				map[string]any{
+					"foo": "bar",
+					"fizz": []any{
+						map[string]any{
+							"buzz": 33,
+						},
+						map[string]any{
+							"buzz": 33,
+							"bazz": 44,
+						},
+					},
+				},
+				"lorem",
+			},
+			key:    "0.fizz.-2.buzz",
+			result: 33,
+			err:    nil,
+		},
 		"from slice, incorrect index, bad value": {
 			p: []any{
 				map[string]any{
@@ -334,6 +354,29 @@ func TestPut(t *testing.T) {
 			},
 			err: nil,
 		},
+		"update current key, in slice, negative index to zero, ok result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					"leet",
+				},
+			},
+			key: "fizz.-4",
+			val: "xxxx",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"xxxx",
+					"bizz",
+					nil,
+					"leet",
+				},
+			},
+			err: nil,
+		},
 		"replace current key, through slice, ok result": {
 			p: map[string]any{
 				"foo": "bar",
@@ -488,6 +531,56 @@ func TestDelete(t *testing.T) {
 				},
 			},
 			key: "fizz.0",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			err: nil,
+		},
+		"delete simple key, negative index, through slice, ok result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			key: "fizz.-2",
+			result: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			err: nil,
+		},
+		"delete simple key, negative index to zero, ok result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			key: "fizz.-4",
 			result: map[string]any{
 				"foo": "bar",
 				"fizz": []any{

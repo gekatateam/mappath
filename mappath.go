@@ -230,7 +230,7 @@ func searchInNode(p any, key string) (any, error) {
 		if err != nil {
 			return nil, &NotFoundError{
 				Path:   key,
-				Reason: "target node is []any, but provided key is negative or cannot be converted into int",
+				Reason: "target node is []any, but provided key cannot be converted into int",
 			}
 		}
 
@@ -238,13 +238,20 @@ func searchInNode(p any, key string) (any, error) {
 			return t[i], nil
 		}
 
-		if (i < 0) && (len(t)+i > 0) && (len(t)+i < len(t)) {
-			return t[len(t)+i], nil
+		if i < 0 {
+			if x := len(t) + i; (x >= 0) && (x < len(t)) {
+				return t[x], nil
+			} else {
+				return nil, &NotFoundError{
+					Path:   key,
+					Reason: "node is a []any, but provided negative index is out of range",
+				}
+			}
 		}
 
 		return nil, &NotFoundError{
 			Path:   key,
-			Reason: "no such key in []any; if key is negative, it is out of range",
+			Reason: "no such key in []any",
 		}
 	default:
 		return nil, &InvalidPathError{
@@ -285,8 +292,8 @@ func putInNode(p any, key string, val any) (any, error) {
 		}
 
 		if i < 0 {
-			if (len(t)+i > 0) && (len(t)+i < len(t)) {
-				t[len(t)+i] = val
+			if x := len(t) + i; (x >= 0) && (x < len(t)) {
+				t[x] = val
 				return t, nil
 			} else {
 				return nil, &InvalidPathError{
@@ -334,14 +341,20 @@ func deleteFromNode(p any, key string) (any, error) {
 			return slices.Delete(t, i, i+1), nil
 		}
 
-		if (i < 0) && (len(t)+i > 0) && (len(t)+i < len(t)) {
-			i = len(t) + i
-			return slices.Delete(t, i, i+1), nil
+		if i < 0 {
+			if x := len(t) + i; (x >= 0) && (x < len(t)) {
+				return slices.Delete(t, x, x+1), nil
+			} else {
+				return nil, &NotFoundError{
+					Path:   key,
+					Reason: "node is a []any, but provided negative index is out of range",
+				}
+			}
 		}
 
 		return nil, &NotFoundError{
 			Path:   key,
-			Reason: "no such key in []any; if key is negative, it is out of range",
+			Reason: "no such key in []any",
 		}
 	default:
 		return nil, &InvalidPathError{
