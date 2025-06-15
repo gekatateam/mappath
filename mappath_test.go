@@ -1,7 +1,6 @@
 package mappath_test
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
@@ -13,7 +12,7 @@ func TestGet(t *testing.T) {
 		p      any
 		key    string
 		result any
-		err    any
+		err    error
 	}{
 		"from map, no slices, ok value": {
 			p: map[string]any{
@@ -134,7 +133,7 @@ func TestGet(t *testing.T) {
 			},
 			key:    "1.fizz.1.bazz",
 			result: nil,
-			err:    new(*mappath.NotFoundError),
+			err:    &mappath.NotFoundError{},
 		},
 		"from slice, negative index, ok result": {
 			p: []any{
@@ -194,7 +193,7 @@ func TestGet(t *testing.T) {
 			},
 			key:    "0.fizz.-100.bazz",
 			result: nil,
-			err:    new(*mappath.NotFoundError),
+			err:    &mappath.NotFoundError{},
 		},
 	}
 
@@ -203,8 +202,8 @@ func TestGet(t *testing.T) {
 			val, err := mappath.Get(test.p, test.key)
 
 			if err != nil {
-				if !errors.As(err, &test.err) {
-					t.Errorf("unexpected error - want: %v, got: %v", test.err, err)
+				if !(reflect.TypeOf(err) == reflect.TypeOf(test.err)) {
+					t.Errorf("unexpected error - want: %v, got: %v", reflect.TypeOf(test.err).String(), reflect.TypeOf(err).String())
 				}
 			} else {
 				if test.err != nil {
@@ -225,7 +224,7 @@ func TestPut(t *testing.T) {
 		key    string
 		val    any
 		result any
-		err    any
+		err    error
 	}{
 		"add new key, in slice with grow, ok result": {
 			p: map[string]any{
@@ -413,7 +412,7 @@ func TestPut(t *testing.T) {
 			key:    "fizz.buzz",
 			val:    1337,
 			result: nil,
-			err:    new(*mappath.InvalidPathError),
+			err:    &mappath.InvalidPathError{},
 		},
 		"add new key, through map, bad path": {
 			p: map[string]any{
@@ -426,7 +425,7 @@ func TestPut(t *testing.T) {
 			key:    "foo.0",
 			val:    1337,
 			result: nil,
-			err:    new(*mappath.InvalidPathError),
+			err:    &mappath.InvalidPathError{},
 		},
 		"add new key, no input, ok path": {
 			p:   nil,
@@ -462,7 +461,7 @@ func TestPut(t *testing.T) {
 			key:    "0.fizz.-300.buzz",
 			val:    1337,
 			result: nil,
-			err:    new(*mappath.InvalidPathError),
+			err:    &mappath.InvalidPathError{},
 		},
 	}
 
@@ -471,8 +470,8 @@ func TestPut(t *testing.T) {
 			val, err := mappath.Put(test.p, test.key, test.val)
 
 			if err != nil {
-				if !errors.As(err, &test.err) {
-					t.Errorf("unexpected error - want: %v, got: %v", test.err, err)
+				if !(reflect.TypeOf(err) == reflect.TypeOf(test.err)) {
+					t.Errorf("unexpected error - want: %v, got: %v", reflect.TypeOf(test.err).String(), reflect.TypeOf(err).String())
 				}
 			} else {
 				if test.err != nil {
@@ -657,7 +656,7 @@ func TestDelete(t *testing.T) {
 			},
 			key:    "fizz.5.bazz",
 			result: nil,
-			err:    new(*mappath.NotFoundError),
+			err:    &mappath.NotFoundError{},
 		},
 		"delete key, negative out-of-range key, bad result": {
 			p: map[string]any{
@@ -673,7 +672,7 @@ func TestDelete(t *testing.T) {
 			},
 			key:    "fizz.-5.bazz",
 			result: nil,
-			err:    new(*mappath.InvalidPathError),
+			err:    &mappath.InvalidPathError{},
 		},
 		"delete key, invalid index, bad result": {
 			p: map[string]any{
@@ -689,7 +688,7 @@ func TestDelete(t *testing.T) {
 			},
 			key:    "fizz.100.bazz",
 			result: nil,
-			err:    new(*mappath.NotFoundError),
+			err:    &mappath.NotFoundError{},
 		},
 	}
 
@@ -698,8 +697,8 @@ func TestDelete(t *testing.T) {
 			val, err := mappath.Delete(test.p, test.key)
 
 			if err != nil {
-				if !errors.As(err, &test.err) {
-					t.Errorf("unexpected error - want: %v, got: %v", test.err, err)
+				if !(reflect.TypeOf(err) == reflect.TypeOf(test.err)) {
+					t.Errorf("unexpected error - want: %v, got: %v", reflect.TypeOf(test.err).String(), reflect.TypeOf(err).String())
 				}
 			} else {
 				if test.err != nil {
