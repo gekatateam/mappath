@@ -228,7 +228,7 @@ func searchInNode(p any, key string) (any, error) {
 	case []any:
 		i, err := strconv.Atoi(key)
 		if err != nil {
-			return nil, &NotFoundError{
+			return nil, &InvalidPathError{
 				Path:   key,
 				Reason: "target node is []any, but provided key cannot be converted into int",
 			}
@@ -242,7 +242,7 @@ func searchInNode(p any, key string) (any, error) {
 			if x := len(t) + i; (x >= 0) && (x < len(t)) {
 				return t[x], nil
 			} else {
-				return nil, &NotFoundError{
+				return nil, &InvalidPathError{
 					Path:   key,
 					Reason: "node is a []any, but provided negative index is out of range",
 				}
@@ -345,7 +345,7 @@ func deleteFromNode(p any, key string) (any, error) {
 			if x := len(t) + i; (x >= 0) && (x < len(t)) {
 				return slices.Delete(t, x, x+1), nil
 			} else {
-				return nil, &NotFoundError{
+				return nil, &InvalidPathError{
 					Path:   key,
 					Reason: "node is a []any, but provided negative index is out of range",
 				}
