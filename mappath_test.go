@@ -195,6 +195,17 @@ func TestGet(t *testing.T) {
 			result: nil,
 			err:    &mappath.NotFoundError{},
 		},
+		"from map, escaped path, ok value": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz.fizz": map[string]any{
+					"buzz.buzz": 133,
+				},
+			},
+			key:    `fizz\.fizz.buzz\.buzz`,
+			result: 133,
+			err:    nil,
+		},
 	}
 
 	for name, test := range tests {
@@ -463,6 +474,24 @@ func TestPut(t *testing.T) {
 			result: nil,
 			err:    &mappath.InvalidPathError{},
 		},
+		"add new key, escaped path, no input, ok path": {
+			p:   nil,
+			key: `0.fizz\.fizz.3.buzz`,
+			val: 1337,
+			result: []any{
+				map[string]any{
+					"fizz.fizz": []any{
+						nil,
+						nil,
+						nil,
+						map[string]any{
+							"buzz": 1337,
+						},
+					},
+				},
+			},
+			err: nil,
+		},
 	}
 
 	for name, test := range tests {
@@ -689,6 +718,30 @@ func TestDelete(t *testing.T) {
 			key:    "fizz.100.bazz",
 			result: nil,
 			err:    &mappath.NotFoundError{},
+		},
+		"delete simple key, escaped path, through slice, ok result": {
+			p: map[string]any{
+				"foo": "bar",
+				"fizz.fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{
+						"leet": 1337,
+					},
+				},
+			},
+			key: `fizz\.fizz.3.leet`,
+			result: map[string]any{
+				"foo": "bar",
+				"fizz.fizz": []any{
+					"buzz",
+					"bizz",
+					nil,
+					map[string]any{},
+				},
+			},
+			err: nil,
 		},
 	}
 

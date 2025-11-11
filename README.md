@@ -4,6 +4,8 @@ mappath is a simple package for searching and modifying generic maps (`map[strin
 
 This functionality was originally implemented in [Neptunus](https://github.com/gekatateam/neptunus) to navigate through event data.
 
+Path separator is just a dot - `.` - that can be escaped using backslash, and a backslash also can be escaped using backslash.
+
 It also supports negative indexes for slices that already exists. In this case, target element will be `len(slice) - |index|`. For example, you can get last element from this slice - `[0, 2, 4, 6]` - by `-1` index, because it's length is `4` and `4-1=3`.
 
 ## Examples
@@ -13,7 +15,7 @@ rawJson := `
     "message": "user login",
     "metadata": {
         "user": {
-            "name": "John Doe",
+            "name.full": "John Doe",
             "email": "johndoe@gmail.com",
             "roles": [ "employee", "manager" ],
             "age": 42
@@ -27,7 +29,10 @@ if err := json.Unmarshal([]byte(rawJson), &data); err != nil {
     return err
 }
 
-// get first user role
+// get user first role
+role, _ := mappath.Get(data, `metadata.user.name\.full`)
+
+// get user full nale
 role, _ := mappath.Get(data, "metadata.user.roles.0")
 
 // add login to user metadata
@@ -54,7 +59,7 @@ rawJson := `
 }
 `
 
-c := &mappath.Container{}
+c := mappath.Container{ Data: map[string]any{} }
 if err := json.Unmarshal([]byte(rawJson), &c.Data); err != nil {
     return err
 }

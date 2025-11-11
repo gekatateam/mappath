@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 )
 
 type InvalidPathError struct {
@@ -43,12 +42,12 @@ func Get(p any, key string) (any, error) {
 	}
 
 	for {
-		dotIndex := strings.IndexRune(key, '.')
-		if dotIndex < 0 { // no nested keys
-			node, err := searchInNode(p, key)
+		currKey, nextKey := CurrentKey(key)
+		if len(nextKey) == 0 { // no nested keys
+			node, err := searchInNode(p, currKey)
 			if err != nil {
 				return nil, &NotFoundError{
-					Path:   key,
+					Path:   currKey,
 					Reason: fmt.Sprintf("no such key: %v", err),
 				}
 			}
@@ -56,7 +55,7 @@ func Get(p any, key string) (any, error) {
 			return node, nil
 		}
 
-		next, err := searchInNode(p, key[:dotIndex])
+		next, err := searchInNode(p, currKey)
 		if err != nil {
 			return nil, &NotFoundError{
 				Path:   key,
@@ -64,8 +63,8 @@ func Get(p any, key string) (any, error) {
 			}
 		}
 
-		key = key[dotIndex+1:] // shift path: foo.bar.buzz -> bar.buzz
-		p = next               // shift searchable object
+		key = nextKey // shift path: foo.bar.buzz -> bar.buzz
+		p = next      // shift searchable object
 	}
 }
 
@@ -158,22 +157,20 @@ func Clone(p any) any {
 }
 
 func putInKey(p any, key string, val any) (any, error) {
-	dotIndex := strings.IndexRune(key, '.')
-	if dotIndex < 0 { // no nested keys
+	currKey, nextKey := CurrentKey(key)
+	if len(nextKey) == 0 { // no nested keys
 		if p == nil {
-			p = createNode(key)
+			p = createNode(currKey)
 		}
-		return putInNode(p, key, val)
+		return putInNode(p, currKey, val)
 	}
 
 	currNode := p
-	currKey := key[:dotIndex]
 
 	if currNode == nil {
 		currNode = createNode(currKey)
 	}
 
-	nextKey := key[dotIndex+1:]
 	nextNode, err := searchInNode(currNode, currKey)
 	var invalidPathError *InvalidPathError
 	if errors.As(err, &invalidPathError) {
@@ -189,18 +186,16 @@ func putInKey(p any, key string, val any) (any, error) {
 }
 
 func deleteFromKey(p any, key string) (any, error) {
-	dotIndex := strings.IndexRune(key, '.')
-	if dotIndex < 0 { // no nested keys
+	currKey, nextKey := CurrentKey(key)
+	if len(nextKey) == 0 { // no nested keys
 		if p == nil {
-			p = createNode(key)
+			p = createNode(currKey)
 		}
-		return deleteFromNode(p, key)
+		return deleteFromNode(p, currKey)
 	}
 
 	currNode := p
-	currKey := key[:dotIndex]
 
-	nextKey := key[dotIndex+1:]
 	nextNode, err := searchInNode(currNode, currKey)
 	if err != nil {
 		return nil, err
